@@ -1,11 +1,8 @@
-%
 % This file demonstrates the functions in the WekaLAB package by way of
 % example. 
 % 
-% 
 % Last updated: 11 Aug 2016
 % Author: Nicholas McCarthy <nicholas.mccarthy@gmail.com>
-
 
 %% Check weka.jar is in Matlab classpath
 
@@ -221,7 +218,7 @@ myFilter = wekaFilter('supervised.instance.Resample', '-Z 200');
 myFilter.setInputFormat(D);
 E = myFilter.useFilter(D, myFilter);
 
-%% Generate a test / train split
+%% Generate an 80:20 train:test split (Method 1)
 
 D = wekaLoadData('samples/iris.arff');
 
@@ -232,6 +229,21 @@ test = myFilter.useFilter(D, myFilter);
 
 myFilter.setInvertSelection(true);
 train = myFilter.useFilter(D, myFilter);
+
+% Train model
+model = wekaTrainModel(train, 'bayes.NaiveBayes');
+
+% Test model
+[predicted, classProbs, confusionMatrix] = wekaClassify(test,model);
+
+%% Generate an 80:20 train:test split (Method 2)
+% Simpler and more readable, but must ensure that the same random seed is used to
+% split the data.
+
+D = wekaLoadData('samples/iris.arff');
+
+train  = wekaApplyFilter(D, 'supervised.instance.StratifiedRemoveFolds', '-N 5 -F 1 -S 1998 -V');
+test = wekaApplyFilter(D, 'supervised.instance.StratifiedRemoveFolds', '-N 5 -F 1 -S 1998');
 
 % Train model
 model = wekaTrainModel(train, 'bayes.NaiveBayes');
@@ -430,4 +442,26 @@ DB = wekaCluster(D, 'DBSCAN', '-E 0.4');
 % Expectation Maximization
 EM = wekaCluster(D, 'EM', '-V');
 
+%% Weka classifier with UpdateClassifier
+
+D = wekaLoadData('samples/iris.arff', 'ARFF');
+
+% Use a 80:20 split of initial training and updating samples
+
+train  = wekaApplyFilter(D, 'supervised.instance.StratifiedRemoveFolds', '-N 5 -F 1 -S 1998 -V');
+update = wekaApplyFilter(D, 'supervised.instance.StratifiedRemoveFolds', '-N 5 -F 1 -S 1998');
+
+% Train Updateable Naive Bayes model
+model = wekaTrainModel(train,'bayes.NaiveBayesUpdateable');
+
+% Display initial model
+disp(model)
+
+% Update model 
+for i = 0:update.numInstances-1
+   model.updateClassifier(update.instance(i))
+end
+
+% Display updated model 
+disp(model)
 
